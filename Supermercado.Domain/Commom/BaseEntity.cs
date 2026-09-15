@@ -2,7 +2,7 @@ namespace Supermercado.Domain.Commom;
 
 public abstract class BaseEntity
 {
-    public Guid Id { get; private set; } = Guid.NewGuid();
+    public int Id { get; set; }
 
     public bool Active { get; private set; } = true;
 
