@@ -1,138 +1,227 @@
-# 🛒 Supermercado API — CP2
+# 📌 CP4 — Health Checks, Observabilidade e Testes com xUnit
 
 ## 👥 Integrantes
-* **Lucas Rafael Solimene** — RM: 565194
-* **Samyr Couto Oliveira** — RM: 565562
+
+* Lucas Rafael Solimene — RM 565194
+* Samyr Couto Oliveira — RM 565562
 
 ---
 
-## 🎯 Domínio do Projeto
-O projeto representa um sistema de **Supermercado**, responsável por gerenciar:
-* Clientes, Categorias, Produtos, Vendas e Itens de venda.
+## 🎯 Domínio da Aplicação
 
-O sistema evoluiu do modelo conceitual (CP1) para a persistência física completa no CP2.
+Sistema de **Supermercado**, contendo:
 
----
+* Clientes
+* Produtos
+* Categorias
+* Vendas
+* Itens de Venda
 
-## 🧱 Entidades Modeladas
-* **Cliente:** Nome, Email, Telefone, DataCadastro.
-* **Categoria:** Nome, Descrição.
-* **Produto:** Nome, Preço, Estoque, CategoriaId.
-* **Venda:** ClienteId, DataVenda, ValorTotal.
-* **ItemVenda:** VendaId, ProdutoId, Quantidade, PrecoUnitario.
-
----
-
-## 🔗 Relacionamentos (Fluent API)
-Os relacionamentos foram implementados respeitando a cardinalidade e as chaves estrangeiras (FKs):
-* Cliente **1:N** Venda
-* Categoria **1:N** Produto
-* Venda **1:N** ItemVenda
-* Produto **1:N** ItemVenda
+A API permite operações CRUD com persistência em banco de dados via **Entity Framework Core**.
 
 ---
 
 ## 🗄️ Banco de Dados
-* **SGBD utilizado:** Oracle Database (Servidor FIAP).
-* **Provider:** `Oracle.EntityFrameworkCore` (v9.0.0).
-* **Ajustes Técnicos:** 
-    * Mapeamento de `bool` para `NUMBER(1)` (O Oracle não possui tipo booleano nativo).
-    * Configuração de precisão decimal via `HasColumnType("NUMBER(18,2)")` para evitar o erro `ORA-00902`.
+
+* SGBD: **Oracle**
+* Acesso via **EF Core**
+* Configurado no `ApplicationDbContext`
 
 ---
 
-## 🧩 Arquitetura (Clean Architecture)
-* **Domain:** Entidades e POCOs.
-* **Application:** Interfaces de repositório (Contratos).
-* **Infrastructure:** DbContext, Mapeamentos (Fluent API), Migrations e Implementações de Repositório.
-* **API:** Configuração de Injeção de Dependência e Controllers.
+## 🚀 Como Executar a API
 
----
-
-## 🧪 Padrão Repository e Injeção de Dependência
-Foi adotado o **Repository Pattern** para desacoplamento da persistência. Os serviços foram registrados no `Program.cs`:
-
-```csharp
-builder.Services.AddDbContext<ApplicationDbContext>(options =>
-    options.UseOracle(builder.Configuration.GetConnectionString("RecommendaContextOracle")));
-
-builder.Services.AddScoped<IClienteRepository, ClienteRepository>();
-```
-
----
-
-## 🔄 Migrations
-
-Migration inicial responsável por criar o banco:
+Copie o projeto
 
 ```bash
-dotnet ef migrations add Banco --project Supermercado.Infrastructure --startup-project Supermercado.API
+git clone https://github.com/LucasRafa22/CP04-supermercado.git
 ```
 
-Aplicar no banco:
+Coloque as credencias do banco em appsettings.Development.json
 
 ```bash
-dotnet ef database update --project Supermercado.Infrastructure --startup-project Supermercado.API
+"RecommendaContextOracle" : "Data Source=oracle.fiap.com.br:1521/orcl;User ID=<USUARIO>;Password=<SENHA>;"
 ```
 
-✔ Executado com sucesso
-✔ Estrutura criada corretamente
-
----
-
-## ▶️ Como Executar o Projeto
-
-1. Clonar o repositório
-
-2. Configurar Credenciais: No arquivo appsettings.Development.json, insira seu usuario e senha na Connection String do Oracle: User ID=<USUARIO>;Password=<SENHA>;
-
-3. Restaurar dependências:
+Depois execute os seguintes comandos
 
 ```bash
+cd Supermercado.API
 dotnet restore
+dotnet build
+dotnet run
 ```
 
-4. Preparar o Banco de Dados:
+### 🔗 URLs importantes
 
-```bash
-# Limpa o esquema atual
-dotnet ef database drop --project Supermercado.Infrastructure --startup-project Supermercado.API --force
-```
+* Swagger:
+  👉 `https://localhost:5084/swagger`
 
-5. Criar banco:
-
-```bash
-# Cria a estrutura completa do zero
-dotnet ef database update --project Supermercado.Infrastructure --startup-project Supermercado.API
-```
-
-6. Rodar a API:
-
-```bash
-dotnet run --project Supermercado.API
-```
-
-7. Acessar: http://localhost:5084/clientes
+* Health Check:
+  👉 `https://localhost:5084/health`
 
 ---
 
-## 📸 Evidência do Banco
+## 🩺 Health Check
 
-As evidências do banco gerado estão disponíveis em:
+Endpoint único:
 
-```plaintext
-/docs/
+```
+GET /health
+```
+
+### ✔ Checks implementados:
+
+* ✔ **self** → verifica se a API está rodando
+* ✔ **database** → verifica conexão com banco Oracle
+
+### 📊 Exemplo de resposta:
+
+```json
+{
+  "status": "Healthy",
+  "duration": 10.23,
+  "checks": [
+    {
+      "name": "database",
+      "status": "Healthy",
+      "duration": 8.12,
+      "error": null
+    },
+    {
+      "name": "self",
+      "status": "Healthy",
+      "duration": 0.45,
+      "error": null
+    }
+  ]
+}
+```
+
+### 📌 Status HTTP:
+
+* `200` → Healthy / Degraded
+* `503` → Unhealthy
+
+---
+
+## 📊 Observabilidade (Logs)
+
+A aplicação utiliza **ILogger** com logs estruturados.
+
+### ✔ Implementado:
+
+* Logs em operações de escrita (POST/PUT/DELETE)
+* Logs de erro no `GlobalExceptionHandler`
+* Correlação com:
+
+```
+traceId = HttpContext.TraceIdentifier
+```
+
+### 📌 Exemplo de log:
+
+```
+[INFO] Criando produto {Nome} | traceId: abc123
+[ERROR] Erro inesperado | traceId: abc123
 ```
 
 ---
 
-## 📊 Relação com o CP1
+## 🧪 Testes Automatizados
 
-| CP1                     | CP2                      |
-| ----------------------- | ------------------------ |
-| MER (modelo conceitual) | Banco físico             |
-| Entidades em C#         | Persistência com EF Core |
-| Sem banco               | Banco SQLite funcional   |
-| Sem persistência        | Repositórios + DI        |
+### ✔ Projetos de teste:
 
+* `Supermercado.Domain.Tests`
+* `Supermercado.Application.Tests`
 
+---
+
+### 🧱 Domain Tests (sem mock)
+
+* ✔ Testes de regra de negócio real
+* ✔ Uso de:
+
+  * `[Fact]`
+  * `[Theory]`
+* ✔ Validação de exceções
+
+---
+
+### ⚙️ Application Tests (com mock)
+
+* ✔ Uso de **Moq**
+* ✔ Mock de `IRepository<T>`
+* ✔ Cenários testados:
+
+  * Falha → NÃO persiste (`Times.Never`)
+  * Sucesso → persiste (`Times.Once`)
+
+---
+
+### ▶️ Executar testes
+
+```bash
+dotnet test
+```
+
+✔ Todos os testes devem passar
+
+---
+
+## ⚠️ Tratamento de Erros
+
+Implementado com:
+
+* `GlobalExceptionHandler`
+* `ProblemDetails` (RFC 7807)
+
+### 📌 Mapeamento:
+
+| Exceção              | HTTP |
+| -------------------- | ---- |
+| ArgumentException    | 400  |
+| KeyNotFoundException | 404  |
+| Exception            | 500  |
+
+---
+
+## 📁 Evidências (/docs)
+
+A pasta `/docs` contém:
+
+* ✔ Print do `/health` (Healthy)
+* ✔ Print do `/health` (Unhealthy)
+* ✔ Logs com `traceId`
+* ✔ Saída do `dotnet test`
+
+---
+
+## 🧱 Arquitetura
+
+Projeto segue **Clean Architecture**:
+
+* **API** → Controllers + configuração
+* **Application** → DTOs + interfaces
+* **Domain** → entidades + regras de negócio
+* **Infrastructure** → EF Core + repositórios
+
+---
+
+## 🔄 Repositório Genérico
+
+Implementado:
+
+```
+IRepository<T>
+Repository<T>
+```
+
+### ✔ Operações:
+
+* GetAll
+* GetById
+* Add
+* Delete
+
+Utilizado nos controllers e testes.
